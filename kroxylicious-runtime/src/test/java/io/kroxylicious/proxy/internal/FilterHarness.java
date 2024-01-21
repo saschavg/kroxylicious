@@ -84,7 +84,7 @@ public abstract class FilterHarness {
                     return d2;
                 })) // reverses order
                 .stream()
-                .map(f -> new FilterHandler(getOnlyElement(FilterAndInvoker.build(f)), timeoutMs, null, testVirtualCluster, inboundChannel, apiVersionService))
+                .map(f -> new FilterHandler(getOnlyElement(FilterAndInvoker.build(f)), timeoutMs, null, testVirtualCluster, inboundChannel, apiVersionService, TEST_CLIENT))
                 .map(ChannelHandler.class::cast);
         var handlers = Stream.concat(channelProcessors, filterHandlers);
 

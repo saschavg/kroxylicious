@@ -22,6 +22,9 @@ import edu.umd.cs.findbugs.annotations.NonNull;
  * A context to allow filters to interact with other filters and the pipeline.
  */
 public interface FilterContext {
+    @Nullable
+    String principalName();
+
     /**
      * A description of this channel.
      * @return A description of this channel (typically used for logging).

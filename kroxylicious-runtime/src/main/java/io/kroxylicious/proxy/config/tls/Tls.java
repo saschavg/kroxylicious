@@ -8,6 +8,7 @@ package io.kroxylicious.proxy.config.tls;
 
 import java.security.KeyStore;
 import java.util.Locale;
+import java.util.Optional;
 
 /**
  * Provides TLS configuration for this peer.  This class is designed to be used for both TLS server and client roles.
@@ -21,6 +22,10 @@ public record Tls(KeyProvider key,
                   TrustProvider trust) {
 
     public static final String PEM = "PEM";
+
+    public boolean requiresClientAuth(){
+        return Optional.ofNullable(trust()).isPresent();
+    }
 
     public static String getStoreTypeOrPlatformDefault(String storeType) {
         return storeType == null ? KeyStore.getDefaultType().toUpperCase(Locale.ROOT) : storeType.toUpperCase(Locale.ROOT);

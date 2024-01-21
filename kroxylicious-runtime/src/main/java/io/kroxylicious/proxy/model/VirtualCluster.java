@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 
 import javax.net.ssl.SSLException;
 
+import io.netty.handler.ssl.ClientAuth;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 
@@ -58,6 +59,10 @@ public class VirtualCluster implements ClusterNetworkAddressConfigProvider {
         // TODO: https://github.com/kroxylicious/kroxylicious/issues/104 be prepared to reload the SslContext at runtime.
         this.upstreamSslContext = buildUpstreamSslContext();
         this.downstreamSslContext = buildDownstreamSslContext();
+    }
+
+    public Optional<Tls> getTls() {
+        return tls;
     }
 
     public String getClusterName() {
@@ -149,7 +154,13 @@ public class VirtualCluster implements ClusterNetworkAddressConfigProvider {
     private Optional<SslContext> buildDownstreamSslContext() {
         return tls.map(tls -> {
             try {
-                return Optional.of(tls.key()).map(KeyProvider::forServer).orElseThrow().build();
+                var sslContextBuilder = Optional.of(tls.key()).map(KeyProvider::forServer).orElseThrow();
+                // client authentication
+                if(tls.requiresClientAuth()){
+                    tls.trust().apply(sslContextBuilder);
+                    sslContextBuilder.clientAuth(ClientAuth.REQUIRE);
+                }
+                return sslContextBuilder.build();
             }
             catch (SSLException e) {
                 throw new UncheckedIOException(e);

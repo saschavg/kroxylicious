@@ -71,7 +71,7 @@ public class KafkaProxyInitializer extends ChannelInitializer<SocketChannel> {
     @Override
     public void initChannel(SocketChannel ch) {
 
-        LOGGER.trace("Connection from {} to my address {}", ch.remoteAddress(), ch.localAddress());
+        LOGGER.trace("Connection ({}) from {} to my address {}", tls?"tls":"plain", ch.remoteAddress(), ch.localAddress());
 
         ChannelPipeline pipeline = ch.pipeline();
 

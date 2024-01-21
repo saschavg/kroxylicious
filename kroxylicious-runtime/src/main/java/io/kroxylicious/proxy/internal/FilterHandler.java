@@ -71,7 +71,19 @@ public class FilterHandler extends ChannelDuplexHandler {
     private CompletableFuture<Void> writeFuture = CompletableFuture.completedFuture(null);
     private CompletableFuture<Void> readFuture = CompletableFuture.completedFuture(null);
     private ChannelHandlerContext ctx;
+    private String principalName;
 
+    public FilterHandler(FilterAndInvoker filterAndInvoker, long timeoutMs, String sniHostname, VirtualCluster virtualCluster, Channel inboundChannel,
+                         ApiVersionsServiceImpl apiVersionService, String principalName) {
+        this.filter = Objects.requireNonNull(filterAndInvoker).filter();
+        this.invoker = filterAndInvoker.invoker();
+        this.timeoutMs = Assertions.requireStrictlyPositive(timeoutMs, "timeout");
+        this.sniHostname = sniHostname;
+        this.virtualCluster = virtualCluster;
+        this.inboundChannel = inboundChannel;
+        this.apiVersionService = apiVersionService;
+        this.principalName = principalName;
+    }
     public FilterHandler(FilterAndInvoker filterAndInvoker, long timeoutMs, String sniHostname, VirtualCluster virtualCluster, Channel inboundChannel,
                          ApiVersionsServiceImpl apiVersionService) {
         this.filter = Objects.requireNonNull(filterAndInvoker).filter();
@@ -441,6 +453,12 @@ public class FilterHandler extends ChannelDuplexHandler {
             final ByteBuf buffer = ctx.alloc().ioBuffer(initialCapacity);
             decodedFrame.add(buffer);
             return new ByteBufOutputStream(buffer);
+        }
+
+        @Nullable
+        @Override
+        public String principalName() {
+            return principalName;
         }
 
         @Nullable

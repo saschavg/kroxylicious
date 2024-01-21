@@ -10,7 +10,13 @@ import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+
+import io.kroxylicious.proxy.config.tls.Tls;
+
+import io.netty.handler.ssl.SslHandler;
+import io.netty.handler.ssl.SslHandshakeCompletionEvent;
 
 import org.apache.kafka.common.message.ApiVersionsRequestData;
 import org.apache.kafka.common.message.ApiVersionsResponseData;
@@ -47,6 +53,8 @@ import io.kroxylicious.proxy.internal.codec.KafkaResponseDecoder;
 import io.kroxylicious.proxy.model.VirtualCluster;
 import io.kroxylicious.proxy.service.HostPort;
 import io.kroxylicious.proxy.tag.VisibleForTesting;
+
+import javax.net.ssl.SSLPeerUnverifiedException;
 
 public class KafkaProxyFrontendHandler
         extends ChannelInboundHandlerAdapter
@@ -339,7 +347,7 @@ public class KafkaProxyFrontendHandler
     private void addFiltersToPipeline(List<FilterAndInvoker> filters, ChannelPipeline pipeline, Channel inboundChannel) {
         for (var filter : filters) {
             // TODO configurable timeout
-            pipeline.addFirst(filter.toString(), new FilterHandler(filter, 20000, sniHostname, virtualCluster, inboundChannel, apiVersionService));
+            pipeline.addFirst(filter.toString(), new FilterHandler(filter, 20000, sniHostname, virtualCluster, inboundChannel, apiVersionService, authorizedId()));
         }
     }
 
@@ -463,6 +471,20 @@ public class KafkaProxyFrontendHandler
         }
         else if (event instanceof AuthenticationEvent) {
             this.authentication = (AuthenticationEvent) event;
+        }
+        else if ( event instanceof SslHandshakeCompletionEvent sslHandshakeCompletionEvent ){
+            if(sslHandshakeCompletionEvent.isSuccess() && virtualCluster.getTls().map(Tls::requiresClientAuth).orElse(false)){
+                try {
+                    var session = ((SslHandler) ctx.pipeline().get(SslHandler.class.getName())).engine().getSession();
+                    var principal = session.getPeerPrincipal().getName().replaceFirst("(?i)^CN=","");
+                    this.authentication = new AuthenticationEvent(principal, new HashMap<String, Object>());
+                    LOGGER.info("PRINCIPAL : {}", this.authentication.authorizationId());
+                }
+                catch (SSLPeerUnverifiedException e){
+                    LOGGER.warn("Unauthorized access attempt: {}", ctx);
+                    ctx.close();
+                }
+            }
         }
         super.userEventTriggered(ctx, event);
     }
